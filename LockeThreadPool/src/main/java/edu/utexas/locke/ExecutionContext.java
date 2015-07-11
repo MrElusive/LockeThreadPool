@@ -1,7 +1,7 @@
 package main.java.edu.utexas.locke;
 
 // Clayton
-// @TODO: Need to pull in the apache Javaflow library for continuations
+// @TODO: This may not be necessary. Leaving it here for now.
 public class ExecutionContext {
 	
 	public void fork() {

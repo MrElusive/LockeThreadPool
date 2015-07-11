@@ -23,7 +23,8 @@ public class LockeThread implements Runnable {
 		}
 	}
 
-	public SynchronizationOperation execute() {
+	// package-private because Process needs to call this, but users should not
+	SynchronizationOperation execute() {
 		if (continuation == null) {
 			continuation = Continuation.startWith(this);
 		} else {

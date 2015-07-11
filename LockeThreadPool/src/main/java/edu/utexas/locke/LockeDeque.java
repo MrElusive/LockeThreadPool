@@ -8,7 +8,7 @@ public class LockeDeque {
 		return null;
 	}
 
-	public void pushBottom(Object firstChild) {
+	public void pushBottom(LockeThread thread) {
 		// TODO Auto-generated method stub
 		
 	}
