@@ -13,7 +13,7 @@ public class Process extends Thread {
 	public void run() {
 		currentThread = deque.popBottom();
 				
-		while (ComputationTracker.done()) {
+		while (!ComputationTracker.done()) {
 			if (currentThread != null) {
 				currentThread = execute(currentThread);
 			} else {
@@ -35,7 +35,6 @@ public class Process extends Thread {
 		
 		SynchronizationOperation synchronizationOperation = thread.execute();
 		assert (synchronizationOperation != null);
-		
 		LockeThread readyThread = synchronizationOperation.getReadyThread();
 		
 		switch (synchronizationOperation.getType()) {
