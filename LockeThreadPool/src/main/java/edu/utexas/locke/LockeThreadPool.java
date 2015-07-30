@@ -17,10 +17,11 @@ public class LockeThreadPool {
 	public void submit(Collection<LockeThread> threads) {
 		// TODO Auto-generated method stub
 	}
+
 	
 	public static Process getRandomProcess() {
-		// TODO Auto-generated method stub
-		return null;
+		Process p = new Process();
+		return p;
 	}
 
 }
