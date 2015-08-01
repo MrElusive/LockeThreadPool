@@ -1,27 +1,41 @@
  package main.java.edu.utexas.locke;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 // Sierra
 public class LockeThreadPool {
 
 	// @TODO: When the initial set of LockeThreads are added to
-	// the LockeThreadPool, we need to call 
+	// the LockeThreadPool, we need to call
 	// ComputationTracker.initialize(numLockeThreads);
 	// This will allow us to keep track of when all LockeThreads
 	// have completed.
-	
+
+	Set<LockeProcess> processes;
+
 	public LockeThreadPool(int numProcesses) {
-		// TODO Auto-generated method stub
+		processes = new HashSet<LockeProcess>();
+		for (int i = 0; i < numProcesses; i++) {
+			LockeProcess process = new LockeProcess(startSemaphore);
+			process.start();
+			processes.add(process);
+		}
 	}
-	
+
 	public void submit(Collection<LockeThread> threads) {
-		// TODO Auto-generated method stub
+		for (LockeThread thread : threads) {
+			getRandomProcess().submit(thread);
+		}
+
+		startSemaphore.release(processes.size());
 	}
 
-	
+	public <T> T invoke(LockeTask<T> task) {
+		return getRandomProcess().invokeTask(task);
+	}
+
 	public static LockeProcess getRandomProcess() {
-		LockeProcess p = new LockeProcess();
-		return p;
+		return null;
 	}
-
 }
