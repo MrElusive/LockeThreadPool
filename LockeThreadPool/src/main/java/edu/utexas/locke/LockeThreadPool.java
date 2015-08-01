@@ -1,4 +1,4 @@
-package main.java.edu.utexas.locke;
+ package main.java.edu.utexas.locke;
 import java.util.Collection;
 
 // Sierra
@@ -19,8 +19,8 @@ public class LockeThreadPool {
 	}
 
 	
-	public static Process getRandomProcess() {
-		Process p = new Process();
+	public static LockeProcess getRandomProcess() {
+		LockeProcess p = new LockeProcess();
 		return p;
 	}
 
