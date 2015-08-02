@@ -7,10 +7,25 @@ import java.util.Set;
 public class LockeThreadPool {
 
 	// @TODO: When the initial set of LockeThreads are added to
-	// the LockeThreadPool, we need to call
+	// the LockeThreadPool, we need to call 
 	// ComputationTracker.initialize(numLockeThreads);
 	// This will allow us to keep track of when all LockeThreads
 	// have completed.
+	
+	//To create multiple processes and their associated serial machines, a program instantiates 
+	// an object of type HoodParMach Ñ a Òparallel machine.Ó 
+	// The HoodParMach constructor takes an integer argument P . 
+	// It creates P serial machines, and it forks P processes. 
+	// Initially, the P processes just park on a condition variable. 
+	// After creating the parallel machine and one or more threads, 
+	// the program calls the HoodParMach runScheduler method. 
+	// The P processes are released from the condition variable, 
+	// and they begin executing the scheduling loop, as described in the next section.
+	// When the scheduling loop terminates, they repark and runScheduler returns.
+	// Member Variables
+	//  startExecution (condition variable)
+	// Methods
+	//void runScheduler()
 
 	Set<LockeProcess> processes;
 
