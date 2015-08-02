@@ -18,10 +18,23 @@ public class LockeDeque {
 	
 	
 	public LockeThread popBottom() {
+		
 
 	}
 
-
+	// Process from thread bottom
+	public void pushBottom(final LockeThread thread) {
+		final Bottom local = bottom;
+		local.node.array.set(local.index, thread); 
+		if (local.index != 0) {
+			bottom = new Bottom(local.node, local.index - 1); 
+		} else { 
+			final Node newNode = new Node(size);
+			newNode.next = local.node;
+			local.node.pre = newNode;
+			bottom = new Bottom(newNode, size - 1);
+		}
+	}
 
 	//Steal from the top
 	public LockeThread popTop() {
