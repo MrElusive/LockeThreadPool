@@ -1,51 +1,79 @@
 package main.java.edu.utexas.locke;
 
-import org.apache.commons.javaflow.Continuation;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+import main.java.edu.utexas.locke.SynchronizationOperation.Type;
+
+import com.offbynull.coroutines.user.Continuation;
+import com.offbynull.coroutines.user.Coroutine;
+import com.offbynull.coroutines.user.CoroutineRunner;
 
 // Vince
-public class LockeThread implements Runnable {
+public abstract class LockeThread implements Coroutine {
 
-	private Runnable target;
-	private Continuation continuation;
-	public boolean isDone;
+	private static ThreadLocal<LockeThread> currentThread = new ThreadLocal<LockeThread>();
+
+	private CoroutineRunner runner;
+	private LockeThread threadToJoin;
+	private ConcurrentLinkedQueue<LockeThread> joiningThreads;
+
+	public volatile boolean isDone;
 
 	public LockeThread() {
-		this.target = null;
-		this.continuation = null;
+		this.runner = new CoroutineRunner(this);
+		this.joiningThreads = new ConcurrentLinkedQueue<LockeThread>();
+		this.isDone = false;
 	}
 
-	public LockeThread(Runnable target) {
-		this.target = target;
+	public void fork(Continuation continuation, LockeThread threadToFork) {
+		//assert this == currentThread();
+		SynchronizationOperation forkOperation = new SynchronizationOperation(Type.FORK);
+		forkOperation.addReadyThread(threadToFork);
+
+		continuation.setContext(forkOperation);
+		continuation.suspend();
 	}
 
-	public void run() {
-		if (this.target != null) {
-			this.target.run();
+	public void join(Continuation continuation, LockeThread threadToJoin) {
+		synchronized(this) {
+		if (!threadToJoin.isDone) {
+			this.threadToJoin = threadToJoin;
+			this.threadToJoin.joiningThreads.offer(this);
+			SynchronizationOperation joinOperation = new SynchronizationOperation(Type.JOIN);
+
+			continuation.setContext(joinOperation);
+			continuation.suspend();
+		}
 		}
 	}
 
-	public void fork() {
-
-	}
-
-	public void join() {
-
+	public static LockeThread currentThread() {
+		return currentThread.get();
 	}
 
 	// package-private because Process needs to call this, but users should not
 	SynchronizationOperation execute() {
-		if (continuation == null) {
-			continuation = Continuation.startWith(this);
-		} else {
-			continuation = Continuation.continueWith(continuation);
-		}
+		currentThread.set(this);
+		boolean finished = !runner.execute();
+		currentThread.set(null);
 
-		if (continuation == null) {
-			return null;
+		if (finished) {
+			SynchronizationOperation terminateOperation = new SynchronizationOperation(Type.TERMINATE);
+			synchronized (this) {
+			this.isDone = true;
+			terminateOperation.addReadyThreads(this.joiningThreads);
+			}
+			return terminateOperation;
 		} else {
-			return (SynchronizationOperation) continuation.value();
+			return (SynchronizationOperation) runner.getContext();
 		}
 	}
 
+	public synchronized void notifyExternal() {
+		notify();
+	}
 
+	public synchronized void waitExternal() throws InterruptedException {
+		wait();
+	}
 }

@@ -1,130 +1,96 @@
 package main.java.edu.utexas.locke;
 
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.LinkedList;
+import java.util.concurrent.atomic.AtomicStampedReference;
 
 // Sierra
 public class LockeDeque {
-	
-	private int size;
-	private volatile Bottom bottom;
-	private AtomicReference<Top> top;
 
-	
+	private LinkedList<LockeThread> deque;
+	private AtomicStampedReference<Integer> top;
+	private int bot;
+
 	public LockeDeque() {
-		bottom = new Bottom(new Node(size), size - 1);
-		top = new AtomicReference<Top>(new Top(0, bottom.node, 0));
+		deque = new LinkedList<LockeThread>();
+		top = new AtomicStampedReference<Integer>(0, 0);
+		bot = 0;
 	}
-	
-	
+
 	public LockeThread popBottom() {
-		final Bottom oldBot = bottom; 
-		final Bottom newBot = oldBot.index != size - 1 
-				? new Bottom(oldBot.node, oldBot.index + 1)
-				: new Bottom(oldBot.node.next, 0);
-				
-		bottom = newBot;
-		final Top localTop = top.get(); 
-
-		// When empty
-		if (oldBot.node == localTop.node && oldBot.index == localTop.index) {
-			bottom = new Bottom(oldBot.node, oldBot.index);
+		int localBot = bot;
+		if (localBot == 0) {
 			return null;
 		}
+		bot = --localBot;
+		LockeThread thread = deque.get(localBot);
 
-		final Object threadIdx = newBot.node.array.get(newBot.index); 
-		// Process the last thread 
-		if (newBot.node == localTop.node && newBot.index == localTop.index) {
-			final Top newTopThread = new Top(localTop.tag + 1, localTop.node, localTop.index);
-			// CAS Success
-			if (top.compareAndSet(localTop, newTopThread)) {  
-				return (LockeThread) threadIdx;
+		int[] topAge = {0};
+		int localTop = top.get(topAge);
+		if (localBot > localTop) {
+			return thread;
+		}
+
+		bot = 0;
+		int newTopAge = topAge[0] + 1;
+		int newTop = 0;
+		if (localBot == localTop) {
+			if (top.compareAndSet(localTop, newTop, topAge[0], newTopAge)) {
+				return thread;
 			}
-			// CAS fail, return the old bottom
-			bottom = oldBot;
-			return null;
 		}
-		return (LockeThread) threadIdx;
+		top.set(newTop, newTopAge);
+		return null;
 	}
 
 	// Process from thread bottom
 	public void pushBottom(final LockeThread thread) {
-		final Bottom local = bottom;
-		local.node.array.set(local.index, thread); 
-		if (local.index != 0) {
-			bottom = new Bottom(local.node, local.index - 1); 
-		} else { 
-			final Node newNode = new Node(size);
-			newNode.next = local.node;
-			local.node.pre = newNode;
-			bottom = new Bottom(newNode, size - 1);
+		int localBot = bot;
+		if (localBot > deque.size()) {
+			deque.add(thread);
+		} else {
+			deque.add(localBot, thread);
 		}
+		bot = localBot + 1;
 	}
 
 	//Steal from the top
 	public LockeThread popTop() {
-		//Get the Top
-		final Top localTop = top.get(); 
-		// Get the bottom
-		final Bottom localBottom = bottom; 
-
-		if (Empty(localBottom, localTop)) {
-	   		if (localTop == top.get()) {
-	   			return null; 
-	   		}
-			return null; 
+		int[] topAge = {0};
+		int localTop = top.get(topAge);
+		int localBot = bot;
+		if (localBot <= localTop) {
+			return null;
 		}
-
-		final Top newTopThread = localTop.index != 0  // keep in current position
-				? new Top(localTop.tag, localTop.node, localTop.index - 1) //go to next node and tag+1
-				: new Top(localTop.tag + 1, localTop.node.pre, size - 1);
-
-		final Object threadIdx = localTop.node.array.get(localTop.index);
-		if (!top.compareAndSet(localTop, newTopThread)) {
-			return null; 
+		LockeThread thread = deque.get(localTop);
+		if (top.compareAndSet(localTop, localTop + 1, topAge[0], topAge[0])) {
+			return thread;
 		}
-		return (LockeThread) threadIdx;
+		return null;
 	}
-	
-	private static class Node {
-		final AtomicReferenceArray<Object> array;
-		volatile Node pre, next;
-
-		Node(final int arraySize) {
-			array = new AtomicReferenceArray<Object>(arraySize);
-		}
-	}
-	
-	private static class Bottom {
-		final Node node;
-		final int index;
-
-		Bottom (final Node node, final int index) {
-			this.node = node;
-			this.index = index;
-		}
-	}
-
-	private static class Top {
-		final int tag;
-		final Node node;
-		final int index;
-
-		Top (final int tag, final Node node, final int index) {
-			this.tag = tag;
-			this.node = node;
-			this.index = index;
-		}
-	}
-	
-	private boolean Empty(final Bottom bot, final Top top) {
-		if (bot.node == top.node && (bot.index == top.index || bot.index == top.index + 1)) {
-			return true;
-		}
-		if (bot.node == top.node.next && bot.index == 0 && top.index == size - 1) {
-			return true;
-		}
-		return false;
-	}
-
 }
+
+/*
+import java.util.concurrent.ConcurrentLinkedDeque;
+
+// Sierra
+public class LockeDeque {
+
+	ConcurrentLinkedDeque<LockeThread> deque;
+
+	public LockeDeque() {
+		deque = new ConcurrentLinkedDeque<LockeThread>();
+	}
+
+	public LockeThread popBottom() {
+		return deque.pollLast();
+	}
+
+	public void pushBottom(LockeThread thread) {
+		deque.addLast(thread);
+	}
+
+	public LockeThread popTop() {
+		return deque.pollFirst();
+	}
+}
+*/

@@ -20,7 +20,12 @@ public class LockeProcess extends Thread {
 	// Executes the work-stealing algorithm
 	@Override
 	public void run() {
-		startSemaphore.acquire();
+		try {
+			startSemaphore.acquire();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 		LockeThread currentThread = deque.popBottom();
 
@@ -62,7 +67,7 @@ public class LockeProcess extends Thread {
 
                 // A client may have called invoke to execute this thread
                 // Let the client know that the result is ready
-                thread.notify();
+                thread.notifyExternal();
 
 				return deque.popBottom();
 			case BLOCK: // @TODO: Determine if we actually need to implement this operation
@@ -97,7 +102,7 @@ public class LockeProcess extends Thread {
 		// Wait for the condition that this task has terminated and the
 		// result is ready
 		try {
-			lockeTask.wait();
+			lockeTask.waitExternal();
 		} catch (InterruptedException e) {
 			throw new RuntimeException("Error: LockeTask invocation caused an unexpected InterruptedException.");
 		}

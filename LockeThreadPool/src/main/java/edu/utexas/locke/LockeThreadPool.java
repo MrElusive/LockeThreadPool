@@ -1,4 +1,5 @@
  package main.java.edu.utexas.locke;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -6,8 +7,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.List;
+import java.util.Random;
+import java.util.concurrent.Semaphore;
 
-// Sierra
 public class LockeThreadPool {
 
 	// @TODO: When the initial set of LockeThreads are added to
@@ -16,27 +19,21 @@ public class LockeThreadPool {
 	// This will allow us to keep track of when all LockeThreads
 	// have completed.
 
-	Set<LockeProcess> processes;
-	private ThreadPoolExecutor threadPoolExecutor;
+	private static List<LockeProcess> processes;
 	private Semaphore startSemaphore;
-	
-	@SuppressWarnings("unused")
-	private ExecutorService threadPool;
 
 	public LockeThreadPool(int numProcesses) {
-		this.startSemaphore = new Semaphore(numProcesses, true);
-		threadPool = Executors.newFixedThreadPool(numProcesses);
+		startSemaphore = new Semaphore(0);
 		final CountDownLatch cdl = new CountDownLatch(numProcesses);
-		
-		//processes = new HashSet<LockeProcess>();
+
+		processes = new ArrayList<LockeProcess>();
+
 		for (int i = 0; i < numProcesses; i++) {
 			LockeProcess process = new LockeProcess(startSemaphore);
 			process.start();
 			processes.add(process);
 		}
 	}
-	
-	
 
 	public void submit(Collection<LockeThread> threads) {
 		for (LockeThread thread : threads) {
@@ -45,36 +42,15 @@ public class LockeThreadPool {
 
 		startSemaphore.release(processes.size());
 	}
-
-	
-	
 	
 	public <T> T invoke(LockeTask<T> task) {
-		
-		
-		try {
-			startSemaphore.acquire();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		CountDownLatch count;
-		
+		ComputationTracker.increment();
+		startSemaphore.release(processes.size());
 		return getRandomProcess().invokeTask(task);
-		
 	}
-	
-	
-
 
 	public static LockeProcess getRandomProcess() {
-		return null;
+		Random random = new Random();
+		return processes.get(random.nextInt(processes.size()));
 	}
-	
-	
-	
-	
-	
-	
 }
