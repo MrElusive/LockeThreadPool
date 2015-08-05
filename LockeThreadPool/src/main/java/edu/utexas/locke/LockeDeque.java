@@ -3,6 +3,7 @@ package main.java.edu.utexas.locke;
 import java.util.LinkedList;
 import java.util.concurrent.atomic.AtomicStampedReference;
 
+
 // Sierra
 public class LockeDeque {
 
@@ -45,10 +46,10 @@ public class LockeDeque {
 	// Process from thread bottom
 	public void pushBottom(final LockeThread thread) {
 		int localBot = bot;
-		if (localBot > deque.size()) {
+		if (localBot >= deque.size()) {
 			deque.add(thread);
 		} else {
-			deque.add(localBot, thread);
+			deque.set(localBot, thread);
 		}
 		bot = localBot + 1;
 	}
@@ -67,4 +68,29 @@ public class LockeDeque {
 		}
 		return null;
 	}
+
+	public int size() {
+		return bot - top.getReference();
+	}
+	/*
+	private ConcurrentLinkedDeque<LockeThread> deque;
+
+	public LockeDeque() {
+		deque = new ConcurrentLinkedDeque<LockeThread>();
+	}
+
+	public LockeThread popBottom() {
+		return deque.pollLast();
+	}
+
+	// Process from thread bottom
+	public void pushBottom(final LockeThread thread) {
+		deque.addLast(thread);
+	}
+
+	//Steal from the top
+	public LockeThread popTop() {
+		return deque.pollFirst();
+	}
+	*/
 }

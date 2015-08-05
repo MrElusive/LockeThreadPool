@@ -4,61 +4,26 @@ import java.util.Arrays;
 import java.util.Random;
 import java.util.function.IntUnaryOperator;
 
-import main.java.edu.utexas.locke.LockeTask;
-import main.java.edu.utexas.locke.LockeThreadPool;
 
-import com.offbynull.coroutines.user.Continuation;
+public class RecursiveMergeSort {
 
-
-public class LockeMergeSort extends LockeTask<Void> {
-
-	private int[] array;
-	private int[] workingArray;
-
-	private int lo;
-	private int hi;
-
-	public LockeMergeSort(int[] array) {
-		this(array, new int[array.length], 0, array.length);
+	public static void compute(int[] array) {
+		compute(array, new int[array.length], 0, array.length);
 	}
 
-	private LockeMergeSort(int[] array, int[] workingArray, int lo, int hi) {
-		this.array = array;
-		this.workingArray = workingArray;
-		this.lo = lo;
-		this.hi = hi;
-	}
-
-	@Override
-	protected Void compute(Continuation c) {
+	private static void compute(int[] array, int[] workingArray, int lo, int hi) {
 		if (lo + 1 >= hi) {
-			return null;
+			return;
 		}
 
 		int mid = (lo + hi) / 2;
-		LockeMergeSort lockeMergeSortLeft = new LockeMergeSort(
-			array,
-			workingArray,
-			lo,
-			mid
-		);
-		this.fork(c, lockeMergeSortLeft);
+		compute(array, workingArray, lo, mid);
+		compute(array, workingArray, mid, hi);
 
-		LockeMergeSort lockeMergeSortRight = new LockeMergeSort(
-			array,
-			workingArray,
-			mid,
-			hi
-		);
-		lockeMergeSortRight.compute(c);
-		this.join(c, lockeMergeSortLeft);
-
-		merge(lo, mid, hi);
-
-		return null;
+		merge(array, workingArray, lo, mid, hi);
 	}
 
-	private void merge(int lo, int mid, int hi) {
+	private static void merge(int[] array, int[] workingArray, int lo, int mid, int hi) {
 		int left = lo;
 		int right = mid;
 
@@ -103,9 +68,7 @@ public class LockeMergeSort extends LockeTask<Void> {
 
 		Arrays.sort(expectedSortedArray);
 
-		LockeMergeSort mergeSort = new LockeMergeSort(actualSortedArray);
-		LockeThreadPool pool = new LockeThreadPool(processors);
-		pool.invoke(mergeSort);
+		compute(actualSortedArray);
 
 		assert Arrays.equals(expectedSortedArray, actualSortedArray);
 		System.out.println("Success!");

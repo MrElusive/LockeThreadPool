@@ -14,19 +14,24 @@ public abstract class LockeThread implements Coroutine {
 	private static ThreadLocal<LockeThread> currentThread = new ThreadLocal<LockeThread>();
 
 	private CoroutineRunner runner;
-	private LockeThread threadToJoin;
-	private ConcurrentLinkedQueue<LockeThread> joiningThreads;
 
 	public volatile boolean isDone;
 
+	public LockeThread parentThread;
+	public ConcurrentLinkedQueue<LockeThread> children;
+
 	public LockeThread() {
 		this.runner = new CoroutineRunner(this);
-		this.joiningThreads = new ConcurrentLinkedQueue<LockeThread>();
 		this.isDone = false;
+		this.parentThread = currentThread();
+		this.children = new ConcurrentLinkedQueue<LockeThread>();
 	}
 
 	public void fork(Continuation continuation, LockeThread threadToFork) {
 		//assert this == currentThread();
+		assert threadToFork != null;
+		this.children.add(threadToFork);
+
 		SynchronizationOperation forkOperation = new SynchronizationOperation(Type.FORK);
 		forkOperation.addReadyThread(threadToFork);
 
@@ -35,16 +40,15 @@ public abstract class LockeThread implements Coroutine {
 	}
 
 	public void join(Continuation continuation, LockeThread threadToJoin) {
-		synchronized(this) {
-		if (!threadToJoin.isDone) {
-			this.threadToJoin = threadToJoin;
-			this.threadToJoin.joiningThreads.offer(this);
-			SynchronizationOperation joinOperation = new SynchronizationOperation(Type.JOIN);
+		//assert this == currentThread();
+		assert threadToJoin != null;
+		assert this.children.contains(threadToJoin);
 
-			continuation.setContext(joinOperation);
-			continuation.suspend();
-		}
-		}
+		SynchronizationOperation joinOperation = new SynchronizationOperation(Type.JOIN);
+		joinOperation.addReadyThread(threadToJoin);
+
+		continuation.setContext(joinOperation);
+		continuation.suspend();
 	}
 
 	public static LockeThread currentThread() {
@@ -58,22 +62,21 @@ public abstract class LockeThread implements Coroutine {
 		currentThread.set(null);
 
 		if (finished) {
-			SynchronizationOperation terminateOperation = new SynchronizationOperation(Type.TERMINATE);
-			synchronized (this) {
 			this.isDone = true;
-			terminateOperation.addReadyThreads(this.joiningThreads);
-			}
+			SynchronizationOperation terminateOperation = new SynchronizationOperation(Type.TERMINATE);
 			return terminateOperation;
 		} else {
 			return (SynchronizationOperation) runner.getContext();
 		}
 	}
 
-	public synchronized void notifyExternal() {
+	public synchronized void notifyDone() {
 		notify();
 	}
 
-	public synchronized void waitExternal() throws InterruptedException {
-		wait();
+	public synchronized void waitDone() throws InterruptedException {
+		while (!isDone) {
+			wait();
+		}
 	}
 }

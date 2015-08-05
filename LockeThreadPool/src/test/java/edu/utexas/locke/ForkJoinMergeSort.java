@@ -2,15 +2,13 @@ package test.java.edu.utexas.locke;
 
 import java.util.Arrays;
 import java.util.Random;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.RecursiveAction;
 import java.util.function.IntUnaryOperator;
 
-import main.java.edu.utexas.locke.LockeTask;
-import main.java.edu.utexas.locke.LockeThreadPool;
 
-import com.offbynull.coroutines.user.Continuation;
-
-
-public class LockeMergeSort extends LockeTask<Void> {
+@SuppressWarnings("serial")
+public class ForkJoinMergeSort extends RecursiveAction {
 
 	private int[] array;
 	private int[] workingArray;
@@ -18,11 +16,11 @@ public class LockeMergeSort extends LockeTask<Void> {
 	private int lo;
 	private int hi;
 
-	public LockeMergeSort(int[] array) {
+	public ForkJoinMergeSort(int[] array) {
 		this(array, new int[array.length], 0, array.length);
 	}
 
-	private LockeMergeSort(int[] array, int[] workingArray, int lo, int hi) {
+	private ForkJoinMergeSort(int[] array, int[] workingArray, int lo, int hi) {
 		this.array = array;
 		this.workingArray = workingArray;
 		this.lo = lo;
@@ -30,32 +28,32 @@ public class LockeMergeSort extends LockeTask<Void> {
 	}
 
 	@Override
-	protected Void compute(Continuation c) {
+	protected void compute() {
 		if (lo + 1 >= hi) {
-			return null;
+			return;
 		}
 
 		int mid = (lo + hi) / 2;
-		LockeMergeSort lockeMergeSortLeft = new LockeMergeSort(
+		ForkJoinMergeSort lockeMergeSortLeft = new ForkJoinMergeSort(
 			array,
 			workingArray,
 			lo,
 			mid
 		);
-		this.fork(c, lockeMergeSortLeft);
+		lockeMergeSortLeft.fork();
 
-		LockeMergeSort lockeMergeSortRight = new LockeMergeSort(
+		ForkJoinMergeSort lockeMergeSortRight = new ForkJoinMergeSort(
 			array,
 			workingArray,
 			mid,
 			hi
 		);
-		lockeMergeSortRight.compute(c);
-		this.join(c, lockeMergeSortLeft);
+		lockeMergeSortRight.compute();
+		lockeMergeSortLeft.join();
 
 		merge(lo, mid, hi);
 
-		return null;
+		return;
 	}
 
 	private void merge(int lo, int mid, int hi) {
@@ -103,8 +101,8 @@ public class LockeMergeSort extends LockeTask<Void> {
 
 		Arrays.sort(expectedSortedArray);
 
-		LockeMergeSort mergeSort = new LockeMergeSort(actualSortedArray);
-		LockeThreadPool pool = new LockeThreadPool(processors);
+		ForkJoinMergeSort mergeSort = new ForkJoinMergeSort(actualSortedArray);
+		ForkJoinPool pool = new ForkJoinPool(processors);
 		pool.invoke(mergeSort);
 
 		assert Arrays.equals(expectedSortedArray, actualSortedArray);

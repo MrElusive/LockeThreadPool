@@ -28,6 +28,29 @@ public class LockeThreadPool {
 			process.start();
 			processes.add(process);
 		}
+
+		Thread dequeMonitor = new Thread(
+			new Runnable() {
+				@Override
+				public void run() {
+					while (!ComputationTracker.done()) {
+						String sizes = "";
+						for (int i = 0; i < processes.size(); i++) {
+							sizes += processes.get(i).getDeque().size() + "\t";
+						}
+						System.out.println(sizes);
+						try {
+							Thread.sleep(1);
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					}
+
+				}
+			}
+		);
+		dequeMonitor.start();
 	}
 
 	public void submit(Collection<LockeThread> threads) {

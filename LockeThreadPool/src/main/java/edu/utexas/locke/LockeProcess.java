@@ -1,10 +1,14 @@
 package main.java.edu.utexas.locke;
 
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 
 // Clayton
 public class LockeProcess extends Thread {
+	private static ThreadLocal<LockeProcess> currentProcess = new ThreadLocal<LockeProcess>();
+	private static ConcurrentHashMap<LockeThread, LockeThread> joinMap = new ConcurrentHashMap<LockeThread, LockeThread>();
+
 	private LockeDeque deque;
 	private Semaphore startSemaphore;
 
@@ -17,9 +21,14 @@ public class LockeProcess extends Thread {
 		deque = new LockeDeque();
 	}
 
+	public static LockeProcess currentProcess() {
+		return currentProcess.get();
+	}
+
 	// Executes the work-stealing algorithm
 	@Override
 	public void run() {
+		currentProcess.set(this);
 		try {
 			startSemaphore.acquire();
 		} catch (InterruptedException e) {
@@ -48,42 +57,67 @@ public class LockeProcess extends Thread {
 		SynchronizationOperation.Type type = synchronizationOperation.getType();
 		assert (type != null);
 
-		List<LockeThread> readyThreads = synchronizationOperation.getReadyThreads();
+		List<LockeThread> readyThreads = synchronizationOperation
+				.getReadyThreads();
 		assert (readyThreads != null);
 
+		LockeThread nextThread = null;
+
 		switch (type) {
-			case FORK:
-				assert (readyThreads.size() == 1);
-				ComputationTracker.increment();
-				deque.pushBottom(readyThreads.get(0));
-				return thread;
-			case TERMINATE:
-				ComputationTracker.decrement();
-				// There may have been multiple threads waiting to join on the
-				// one that just terminated.
-                for (LockeThread readyThread : readyThreads) {
-                	deque.pushBottom(readyThread);
-                }
+		case FORK:
+			assert (readyThreads.size() == 1);
+			ComputationTracker.increment();
+			deque.pushBottom(readyThreads.get(0));
+			nextThread = thread;
+			break;
+		case TERMINATE:
+			ComputationTracker.decrement();
+			// A client may have called invoke to execute this thread
+			// Let the client know that the result is ready
+			thread.notifyDone();
 
-                // A client may have called invoke to execute this thread
-                // Let the client know that the result is ready
-                thread.notifyExternal();
+			LockeThread parentThread = thread.parentThread;
+			if (parentThread != null) {
+				synchronized (joinMap) {
+					if (joinMap.containsKey(thread)) {
+						joinMap.remove(thread);
+						nextThread = parentThread;
+					} else {
+						joinMap.put(thread, parentThread);
+						nextThread = deque.popBottom();
+					}
+				}
+			} else {
+				nextThread = deque.popBottom();
+			}
+			break;
 
-				return deque.popBottom();
-			case BLOCK: // @TODO: Determine if we actually need to implement this operation
-				assert (readyThreads.isEmpty());
-				return deque.popBottom();
-			case JOIN:
-				assert (readyThreads.isEmpty());
-				return deque.popBottom();
-			default:
-				throw new RuntimeException(
-					String.format(
-						"Error: Unrecognized synchronization operation (%s)",
-						type.name()
-					)
-				);
+		// There may have been multiple threads waiting to join on the
+		// one that just terminated.
+		// for (LockeThread readyThread : readyThreads) {
+		// deque.pushBottom(readyThread);
+		// }
+
+		case JOIN:
+			assert (readyThreads.size() == 1);
+			LockeThread childThread = readyThreads.get(0);
+			synchronized (joinMap) {
+				if (joinMap.containsKey(childThread)) {
+					joinMap.remove(childThread);
+					nextThread = thread;
+				} else {
+					joinMap.put(childThread, thread);
+					nextThread = deque.popBottom();
+				}
+			}
+			break;
+		default:
+			throw new RuntimeException(String.format(
+					"Error: Unrecognized synchronization operation (%s)",
+					type.name()));
 		}
+
+		return nextThread;
 	}
 
 	// attempts to steal a thread from another process
@@ -102,9 +136,10 @@ public class LockeProcess extends Thread {
 		// Wait for the condition that this task has terminated and the
 		// result is ready
 		try {
-			lockeTask.waitExternal();
+			lockeTask.waitDone();
 		} catch (InterruptedException e) {
-			throw new RuntimeException("Error: LockeTask invocation caused an unexpected InterruptedException.");
+			throw new RuntimeException(
+					"Error: LockeTask invocation caused an unexpected InterruptedException.");
 		}
 
 		return lockeTask.get();

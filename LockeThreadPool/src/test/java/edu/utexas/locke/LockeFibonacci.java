@@ -20,10 +20,14 @@ class LockeFibonacci extends LockeTask<Integer> {
 		LockeFibonacci f1 = new LockeFibonacci(n - 1);
 		this.fork(c, f1);
 		LockeFibonacci f2 = new LockeFibonacci(n - 2);
-		return f2.compute(c) + f1.waitGet(c);
+		int tempResult = f2.compute(c);
+		this.join(c, f1);;
+		return tempResult + f1.get();
 	}
 
 	public static void main(String[] args) {
+		PerformanceMonitor perfMon = new PerformanceMonitor();
+
 		int processors = Runtime.getRuntime().availableProcessors();
 		System.out.println("Number of processors: " + processors);
 
@@ -36,5 +40,7 @@ class LockeFibonacci extends LockeTask<Integer> {
 		LockeThreadPool pool = new LockeThreadPool(processors);
 		int result = pool.invoke(f);
 		System.out.println("Result: " + result);
+
+		perfMon.gatherMetricsAndPrint();
 	}
 }
