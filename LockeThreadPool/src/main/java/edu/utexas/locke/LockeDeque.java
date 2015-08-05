@@ -68,29 +68,3 @@ public class LockeDeque {
 		return null;
 	}
 }
-
-/*
-import java.util.concurrent.ConcurrentLinkedDeque;
-
-// Sierra
-public class LockeDeque {
-
-	ConcurrentLinkedDeque<LockeThread> deque;
-
-	public LockeDeque() {
-		deque = new ConcurrentLinkedDeque<LockeThread>();
-	}
-
-	public LockeThread popBottom() {
-		return deque.pollLast();
-	}
-
-	public void pushBottom(LockeThread thread) {
-		deque.addLast(thread);
-	}
-
-	public LockeThread popTop() {
-		return deque.pollFirst();
-	}
-}
-*/
