@@ -7,9 +7,6 @@ import java.util.function.IntUnaryOperator;
 import main.java.edu.utexas.locke.LockeTask;
 import main.java.edu.utexas.locke.LockeThreadPool;
 
-import com.offbynull.coroutines.user.Continuation;
-
-
 public class LockeMergeSort extends LockeTask<Void> {
 
 	private int[] array;
@@ -30,31 +27,20 @@ public class LockeMergeSort extends LockeTask<Void> {
 	}
 
 	@Override
-	protected Void compute(Continuation c) {
+	protected Void compute() {
 		if (lo + 1 >= hi) {
 			return null;
 		}
 
 		int mid = (lo + hi) / 2;
-		LockeMergeSort lockeMergeSortLeft = new LockeMergeSort(
-			array,
-			workingArray,
-			lo,
-			mid
-		);
-		this.fork(c, lockeMergeSortLeft);
+		LockeMergeSort lockeMergeSortLeft = new LockeMergeSort(array, workingArray, lo, mid);
+		lockeMergeSortLeft.fork();
 
-		LockeMergeSort lockeMergeSortRight = new LockeMergeSort(
-			array,
-			workingArray,
-			mid,
-			hi
-		);
-		lockeMergeSortRight.compute(c);
-		this.join(c, lockeMergeSortLeft);
+		LockeMergeSort lockeMergeSortRight = new LockeMergeSort(array, workingArray, mid, hi);
+		lockeMergeSortRight.compute();
+		lockeMergeSortLeft.join();
 
 		merge(lo, mid, hi);
-
 		return null;
 	}
 
@@ -80,24 +66,22 @@ public class LockeMergeSort extends LockeTask<Void> {
 
 		int processors = Runtime.getRuntime().availableProcessors();
 		System.out.println("Number of processors: " + processors);
+		System.out.println();
 
-		int originalArrayLength = 5;
+		int originalArrayLength = 100;
 		if (args.length > 0) {
 			originalArrayLength = Integer.parseInt(args[0]);
 		}
 
 		int[] originalArray = new int[originalArrayLength];
-		Arrays.setAll(
-			originalArray,
-			new IntUnaryOperator() {
-				private Random random = new Random();
+		Arrays.setAll(originalArray, new IntUnaryOperator() {
+			private Random random = new Random();
 
-				@Override
-				public int applyAsInt(int operand) {
-					return random.nextInt(100);
-				}
+			@Override
+			public int applyAsInt(int operand) {
+				return random.nextInt(100);
 			}
-		);
+		});
 		int[] expectedSortedArray = originalArray.clone();
 		int[] actualSortedArray = originalArray.clone();
 
@@ -108,9 +92,9 @@ public class LockeMergeSort extends LockeTask<Void> {
 		pool.invoke(mergeSort);
 
 		assert Arrays.equals(expectedSortedArray, actualSortedArray);
-		System.out.println("Success!");
 		System.out.println("Original Array: " + Arrays.toString(originalArray));
 		System.out.println("Sorted Array: " + Arrays.toString(actualSortedArray));
+		System.out.println();
 
 		perfMon.gatherMetricsAndPrint();
 	}

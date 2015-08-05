@@ -1,79 +1,47 @@
 package main.java.edu.utexas.locke;
 
-import java.util.concurrent.ConcurrentLinkedQueue;
+/*
+ * Represents a thread of execution in a process.
+ * Each LockeProcess will execute one LockeThread at a time.
+ * 
+ * If a LockeThread is forked, that new LockeThread is added
+ * to the deque of the currently executing process. See fork() below.
+ * 
+ * If a LockeThread is joined on, the LockeThread that is joining must wait
+ * until the LockeThread that is being joined on has finished. In the meantime,
+ * the LockeProcess of the LockeThread that is joining will try to execute other
+ * threads. See join() below.
+ */
+public abstract class LockeThread {
 
-import main.java.edu.utexas.locke.SynchronizationOperation.Type;
-
-import com.offbynull.coroutines.user.Continuation;
-import com.offbynull.coroutines.user.Coroutine;
-import com.offbynull.coroutines.user.CoroutineRunner;
-
-// Vince
-public abstract class LockeThread implements Coroutine {
-
-	private static ThreadLocal<LockeThread> currentThread = new ThreadLocal<LockeThread>();
-
-	private CoroutineRunner runner;
-
-	public volatile boolean isDone;
-
-	public LockeThread parentThread;
-	public ConcurrentLinkedQueue<LockeThread> children;
-
-	public LockeThread() {
-		this.runner = new CoroutineRunner(this);
-		this.isDone = false;
-		this.parentThread = currentThread();
-		this.children = new ConcurrentLinkedQueue<LockeThread>();
+	private volatile boolean isDone;
+	
+	public void exec() {
+		run();
+		finish();
+		ComputationTracker.decrement();
 	}
 
-	public void fork(Continuation continuation, LockeThread threadToFork) {
-		//assert this == currentThread();
-		assert threadToFork != null;
-		this.children.add(threadToFork);
-
-		SynchronizationOperation forkOperation = new SynchronizationOperation(Type.FORK);
-		forkOperation.addReadyThread(threadToFork);
-
-		continuation.setContext(forkOperation);
-		continuation.suspend();
+	protected abstract void run();
+	
+	private synchronized void finish() {
+		isDone = true;
+		notifyAll(); // Notify any Java threads that might be waiting for this LockeThread to complete
 	}
-
-	public void join(Continuation continuation, LockeThread threadToJoin) {
-		//assert this == currentThread();
-		assert threadToJoin != null;
-		assert this.children.contains(threadToJoin);
-
-		SynchronizationOperation joinOperation = new SynchronizationOperation(Type.JOIN);
-		joinOperation.addReadyThread(threadToJoin);
-
-		continuation.setContext(joinOperation);
-		continuation.suspend();
+	
+	public void fork() {
+		ComputationTracker.increment();
+		LockeProcess.currentProcess().getDeque().pushBottom(this);
 	}
-
-	public static LockeThread currentThread() {
-		return currentThread.get();
-	}
-
-	// package-private because Process needs to call this, but users should not
-	SynchronizationOperation execute() {
-		currentThread.set(this);
-		boolean finished = !runner.execute();
-		currentThread.set(null);
-
-		if (finished) {
-			this.isDone = true;
-			SynchronizationOperation terminateOperation = new SynchronizationOperation(Type.TERMINATE);
-			return terminateOperation;
-		} else {
-			return (SynchronizationOperation) runner.getContext();
+	
+	public void join() {
+		while (!isDone) {
+			LockeProcess.currentProcess().workSteal();
 		}
 	}
 
-	public synchronized void notifyDone() {
-		notify();
-	}
-
+	// Although similar to join() above, this method causes the entire Java thread (LockeProcess)
+	// to pause execution until the isDone condition is true.
 	public synchronized void waitDone() throws InterruptedException {
 		while (!isDone) {
 			wait();

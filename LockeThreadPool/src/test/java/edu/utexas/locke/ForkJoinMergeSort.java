@@ -6,7 +6,6 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveAction;
 import java.util.function.IntUnaryOperator;
 
-
 @SuppressWarnings("serial")
 public class ForkJoinMergeSort extends RecursiveAction {
 
@@ -34,20 +33,10 @@ public class ForkJoinMergeSort extends RecursiveAction {
 		}
 
 		int mid = (lo + hi) / 2;
-		ForkJoinMergeSort lockeMergeSortLeft = new ForkJoinMergeSort(
-			array,
-			workingArray,
-			lo,
-			mid
-		);
+		ForkJoinMergeSort lockeMergeSortLeft = new ForkJoinMergeSort(array, workingArray, lo, mid);
 		lockeMergeSortLeft.fork();
 
-		ForkJoinMergeSort lockeMergeSortRight = new ForkJoinMergeSort(
-			array,
-			workingArray,
-			mid,
-			hi
-		);
+		ForkJoinMergeSort lockeMergeSortRight = new ForkJoinMergeSort(array, workingArray, mid, hi);
 		lockeMergeSortRight.compute();
 		lockeMergeSortLeft.join();
 
@@ -78,24 +67,22 @@ public class ForkJoinMergeSort extends RecursiveAction {
 
 		int processors = Runtime.getRuntime().availableProcessors();
 		System.out.println("Number of processors: " + processors);
+		System.out.println();
 
-		int originalArrayLength = 5;
+		int originalArrayLength = 100;
 		if (args.length > 0) {
 			originalArrayLength = Integer.parseInt(args[0]);
 		}
 
 		int[] originalArray = new int[originalArrayLength];
-		Arrays.setAll(
-			originalArray,
-			new IntUnaryOperator() {
-				private Random random = new Random();
+		Arrays.setAll(originalArray, new IntUnaryOperator() {
+			private Random random = new Random();
 
-				@Override
-				public int applyAsInt(int operand) {
-					return random.nextInt(100);
-				}
+			@Override
+			public int applyAsInt(int operand) {
+				return random.nextInt(100);
 			}
-		);
+		});
 		int[] expectedSortedArray = originalArray.clone();
 		int[] actualSortedArray = originalArray.clone();
 
@@ -106,9 +93,9 @@ public class ForkJoinMergeSort extends RecursiveAction {
 		pool.invoke(mergeSort);
 
 		assert Arrays.equals(expectedSortedArray, actualSortedArray);
-		System.out.println("Success!");
 		System.out.println("Original Array: " + Arrays.toString(originalArray));
 		System.out.println("Sorted Array: " + Arrays.toString(actualSortedArray));
+		System.out.println();
 
 		perfMon.gatherMetricsAndPrint();
 	}

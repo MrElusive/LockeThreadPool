@@ -4,17 +4,17 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveTask;
 
 @SuppressWarnings("serial")
-public class ForkJoinFibonacci extends RecursiveTask<Integer> {
-	final int n;
+public class ForkJoinFibonacci extends RecursiveTask<Long> {
+	final long n;
 
-	ForkJoinFibonacci(int n) {
+	ForkJoinFibonacci(long n) {
 		this.n = n;
 	}
 
 	@Override
-	protected Integer compute() {
+	protected Long compute() {
 		if ((n == 0) || (n == 1)) {
-			return 1;
+			return 1L;
 		}
 
 		ForkJoinFibonacci f1 = new ForkJoinFibonacci(n - 1);
@@ -28,10 +28,18 @@ public class ForkJoinFibonacci extends RecursiveTask<Integer> {
 
 		int processors = Runtime.getRuntime().availableProcessors();
 		System.out.println("Number of processors: " + processors);
-		ForkJoinFibonacci f = new ForkJoinFibonacci(Integer.parseInt(args[0]));
+		System.out.println();
+
+		int n = 25;
+		if (args.length > 0) {
+			n = Integer.parseInt(args[0]);
+		}
+
+		ForkJoinFibonacci f = new ForkJoinFibonacci(n);
 		ForkJoinPool pool = new ForkJoinPool(processors);
-		int result = pool.invoke(f);
+		long result = pool.invoke(f);
 		System.out.println("Result: " + result);
+		System.out.println();
 
 		perfMon.gatherMetricsAndPrint();
 	}

@@ -1,26 +1,30 @@
 package main.java.edu.utexas.locke;
 
-import com.offbynull.coroutines.user.Continuation;
-
+/*
+ * Represents a chunk of work that is necessary to compute a desired value.
+ * Clients must override compute().
+ */
 public abstract class LockeTask<T> extends LockeThread {
 	private T value;
 
-	protected abstract T compute(Continuation c);
-
-	// Clients should not override this method!
+	// Overridden by clients to perform their computation.
+	protected abstract T compute();
+	
 	@Override
-	public void run(Continuation c) {
-		value = compute(c);
+	protected void run() {
+		value = compute();
 	}
 
-	public T waitGet(Continuation c) {
-		LockeThread currentThread = LockeThread.currentThread();
-        currentThread.join(c, this);
-        return value;
-	}
-
-	public T get() {
+	// Wait until this LockeTask is completed before retrieving its computed value.
+	public T joinGet() {
+		super.join();
 		return value;
 	}
 
+	// Immediately retrieve this task's value.
+	// This should be used in conjunction with LockeThread.waitDone(),
+	// as shown in the LockeThreadPool.invoke().
+	public T get() {
+		return value;
+	}
 }

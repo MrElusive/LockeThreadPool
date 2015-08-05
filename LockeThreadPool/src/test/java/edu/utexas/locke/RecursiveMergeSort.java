@@ -4,7 +4,6 @@ import java.util.Arrays;
 import java.util.Random;
 import java.util.function.IntUnaryOperator;
 
-
 public class RecursiveMergeSort {
 
 	public static void compute(int[] array) {
@@ -43,26 +42,20 @@ public class RecursiveMergeSort {
 	public static void main(String[] args) {
 		PerformanceMonitor perfMon = new PerformanceMonitor();
 
-		int processors = Runtime.getRuntime().availableProcessors();
-		System.out.println("Number of processors: " + processors);
-
-		int originalArrayLength = 5;
+		int originalArrayLength = 100;
 		if (args.length > 0) {
 			originalArrayLength = Integer.parseInt(args[0]);
 		}
 
 		int[] originalArray = new int[originalArrayLength];
-		Arrays.setAll(
-			originalArray,
-			new IntUnaryOperator() {
-				private Random random = new Random();
+		Arrays.setAll(originalArray, new IntUnaryOperator() {
+			private Random random = new Random();
 
-				@Override
-				public int applyAsInt(int operand) {
-					return random.nextInt(100);
-				}
+			@Override
+			public int applyAsInt(int operand) {
+				return random.nextInt(100);
 			}
-		);
+		});
 		int[] expectedSortedArray = originalArray.clone();
 		int[] actualSortedArray = originalArray.clone();
 
@@ -71,9 +64,9 @@ public class RecursiveMergeSort {
 		compute(actualSortedArray);
 
 		assert Arrays.equals(expectedSortedArray, actualSortedArray);
-		System.out.println("Success!");
 		System.out.println("Original Array: " + Arrays.toString(originalArray));
 		System.out.println("Sorted Array: " + Arrays.toString(actualSortedArray));
+		System.out.println();
 
 		perfMon.gatherMetricsAndPrint();
 	}

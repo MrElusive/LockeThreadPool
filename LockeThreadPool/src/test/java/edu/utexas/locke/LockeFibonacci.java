@@ -3,26 +3,22 @@ package test.java.edu.utexas.locke;
 import main.java.edu.utexas.locke.LockeTask;
 import main.java.edu.utexas.locke.LockeThreadPool;
 
-import com.offbynull.coroutines.user.Continuation;
+class LockeFibonacci extends LockeTask<Long> {
+	final long n;
 
-class LockeFibonacci extends LockeTask<Integer> {
-	final int n;
-
-	LockeFibonacci(int n) {
+	LockeFibonacci(long n) {
 		this.n = n;
 	}
 
 	@Override
-	protected Integer compute(Continuation c) {
+	protected Long compute() {
 		if ((n == 0) || (n == 1)) {
-			return 1;
+			return 1L;
 		}
 		LockeFibonacci f1 = new LockeFibonacci(n - 1);
-		this.fork(c, f1);
+		f1.fork();
 		LockeFibonacci f2 = new LockeFibonacci(n - 2);
-		int tempResult = f2.compute(c);
-		this.join(c, f1);;
-		return tempResult + f1.get();
+		return f2.compute() + f1.joinGet();
 	}
 
 	public static void main(String[] args) {
@@ -30,16 +26,18 @@ class LockeFibonacci extends LockeTask<Integer> {
 
 		int processors = Runtime.getRuntime().availableProcessors();
 		System.out.println("Number of processors: " + processors);
+		System.out.println();
 
-		int n = 5;
+		int n = 25;
 		if (args.length > 0) {
 			n = Integer.parseInt(args[0]);
 		}
 		LockeFibonacci f = new LockeFibonacci(n);
 
 		LockeThreadPool pool = new LockeThreadPool(processors);
-		int result = pool.invoke(f);
+		long result = pool.invoke(f);
 		System.out.println("Result: " + result);
+		System.out.println();
 
 		perfMon.gatherMetricsAndPrint();
 	}
